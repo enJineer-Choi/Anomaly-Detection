@@ -1,0 +1,102 @@
+PatchCore.ipynb error summary
+=============================
+
+Context
+-------
+- Notebook: notebooks/PatchCore.ipynb
+- Current working directory inside notebook:
+  C:\Users\neo\Desktop\seokjin\portfolio\notebooks
+- Dataset location:
+  C:\Users\neo\Desktop\seokjin\portfolio\notebooks\datasets\transistor
+- Correct root value for this notebook:
+  root="./datasets"
+
+
+Observed errors
+---------------
+1. HTTP Error 404
+
+This happened when the dataset root path was wrong, for example:
+
+    root="./notebooks/datasets"
+
+Because the notebook is already running from the notebooks folder, this path
+actually points to:
+
+    C:\Users\neo\Desktop\seokjin\portfolio\notebooks\notebooks\datasets
+
+That folder does not exist. As a result, anomalib thought the MVTecAD dataset
+was missing and tried to download it automatically. The download URL used by
+the installed anomalib version returned HTTP 404.
+
+So the 404 error was not caused by the local image files. It was caused by
+anomalib trying to download the dataset after failing to find it locally.
+
+
+2. ValueError: num_samples should be a positive integer value, but got num_samples=0
+
+After setting:
+
+    datamodule = MVTecAD(
+        root="./datasets",
+        category="transistor"
+    )
+
+the path itself is correct. The local dataset exists and contains images:
+
+    ./datasets/transistor/train/good
+
+However, engine.fit(...) still fails with:
+
+    ValueError: num_samples should be a positive integer value, but got num_samples=0
+
+This means the training DataLoader was created with an empty training dataset.
+
+
+Confirmed cause
+---------------
+The issue is not the dataset path anymore.
+
+The issue is a split handling problem in the installed anomalib version.
+
+Direct checks showed:
+
+    make_mvtec_ad_dataset(root)                  -> 313 samples
+    make_mvtec_ad_dataset(root, split="train")   -> 213 samples
+    make_mvtec_ad_dataset(root, split=Split.TRAIN) -> 0 samples
+
+The MVTecAD datamodule internally creates the training dataset using:
+
+    split=Split.TRAIN
+
+But the dataset filtering logic compares the DataFrame split column against
+that value directly. The DataFrame contains string values such as:
+
+    "train"
+    "test"
+    "ground_truth"
+
+In this installed version, comparing the string "train" with Split.TRAIN does
+not match, so all training samples are filtered out. That is why the training
+dataset length becomes 0 even though the image files exist.
+
+
+Conclusion
+----------
+- root="./datasets" is correct for this notebook.
+- The local MVTecAD transistor dataset is present.
+- The 404 error occurred only when anomalib could not find the local dataset
+  and attempted automatic download.
+- The current main error is caused by anomalib's internal split handling:
+  split="train" works, but split=Split.TRAIN produces 0 samples.
+- Therefore, the problem is not engine.fit(...) itself and not a missing image
+  folder. It is likely an anomalib version compatibility/bug issue.
+
+
+Possible next steps
+-------------------
+1. Use a different anomalib version where MVTecAD split handling works.
+2. Avoid MVTecAD datamodule and create a custom datamodule/dataloader using
+   MVTecADDataset or make_mvtec_ad_dataset with split="train".
+3. Patch the installed anomalib code so it compares split values as strings.
+

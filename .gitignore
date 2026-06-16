@@ -1,0 +1,25 @@
+# Datasets (too large for git, downloaded via anomalib)
+datasets/
+data/
+notebooks/datasets/
+
+# Model weights / exported models
+*.pth
+*.ckpt
+*.onnx
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+lightning_logs/
+results/metrics/*.json
+
+# OS
+.DS_Store

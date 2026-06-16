@@ -1,0 +1,6 @@
+anomalib
+torch
+torchvision
+numpy
+matplotlib
+pillow
